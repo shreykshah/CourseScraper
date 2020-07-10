@@ -10,7 +10,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 r = requests.get('https://pages.cs.wisc.edu/~shrey/cc/ccoursescraperc')
 ap = argparse.ArgumentParser(description='Sort classes by GPA')
-ap.add_argument('-r', '--read', nargs='?', const='classes',
+ap.add_argument('-r', '--read', nargs='?', const='classes.csv',
                 help='file to read course codes from')
 ap.add_argument('-w', '--write', nargs='?', const='classes.csv',
                 help='file to write course codes to')
@@ -61,7 +61,7 @@ if args.print is None:
         driver.quit()
         if args.write is not None:
             #write course codes to load later
-            cw = csv.writer(open((args.write + ".csv"),'w'))
+            cw = csv.writer(open((args.write),'w'))
             cw.writerow(list(classes))
     else:
         #load course coads
@@ -90,33 +90,41 @@ if args.print is None:
                 grade = json.loads(requests.get(url, headers=auth).text)
                 #calculate average
                 #not using certain values, contact registrar for more info
-                avg_gpa = (((grade["cumulative"]["aCount"] * 4.0) + (grade["cumulative"]["abCount"] * 3.5) +
-                            (grade["cumulative"]["bCount"] * 3.0) + (grade["cumulative"]["bcCount"] * 2.5) +
-                            (grade["cumulative"]["cCount"] * 2.0) + (grade["cumulative"]["dCount"])) /
-                           (grade["cumulative"]["aCount"] + grade["cumulative"]["abCount"] +
-                            grade["cumulative"]["bCount"] + grade["cumulative"]["bcCount"] +
-                            grade["cumulative"]["cCount"] + grade["cumulative"]["dCount"] +
-                            grade["cumulative"]["fCount"]))
+                tot = ((grade["cumulative"]["aCount"] * 4.0) + (grade["cumulative"]["abCount"] * 3.5) +
+                       (grade["cumulative"]["bCount"] * 3.0) + (grade["cumulative"]["bcCount"] * 2.5) +
+                       (grade["cumulative"]["cCount"] * 2.0) + (grade["cumulative"]["dCount"]))
+                n = (grade["cumulative"]["aCount"] + grade["cumulative"]["abCount"] +
+                     grade["cumulative"]["bCount"] + grade["cumulative"]["bcCount"] +
+                     grade["cumulative"]["cCount"] + grade["cumulative"]["dCount"] +
+                     grade["cumulative"]["fCount"])
+                avg_gpa = tot / n
+                sort_key = (tot) / (n+10) #adjusting for low class numbers
             else:
                 avg_gpa = 0 #cound not find course in MadGrades
+                sort_key = 0
         except: #no previous data or error in data
             avg_gpa = 0
+            sort_key = 0
+        if avg_gpa == 0:
+            #error where sort key may have value when avg_gpa has no value
+            #not sure why this is occurring (not very reproducable), manually setting to 0
+            sort_key = 0
         try:
             print(("getting grades: " + str('%.1f' % (i / len(classes) *100)) +
                " percent complete"), end='\r')
         except:
             pass
         i=i+1
-        cg[course_code] = avg_gpa #adding pair to dictionary
+        cg[course_code] = [avg_gpa,sort_key] #adding pair to dictionary
 
     print("sorting\n")
-    courses_inorder = (sorted(cg, key=cg.get))
+    courses_inorder = {k: v for k, v in sorted(cg.items(), key=lambda item: item[1][1])}
 
     cw = csv.writer(open((args.output),'w'))
     for course in courses_inorder:
-        print(course + ": " + str(cg[course]))
+        print(course + ": " + str(cg[course][0]))
         #write output to csv to view later
-        cw.writerow([course, cg[course]])
+        cw.writerow([course, cg[course][0], cg[course][1]])
 else:
     #check arguments
     if args.print == []:
@@ -131,7 +139,7 @@ else:
     try:
         with open((args.print[0]), newline='') as f:
             reader = csv.reader(f)
-            for rows in reader:
+            for rows in reader: #rows is array split by commas
                 if int(rows[0].split(" ")[-1]) <= int(args.print[1]):
                     print(rows[0] + ": " + rows[1])
     except Exception as e:
