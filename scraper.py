@@ -39,7 +39,7 @@ if args.print is None:
         while prev != course:
             prev = course
             #for each course "block"
-            for course_path in driver.find_elements_by_xpath("/html/body/div[2]/div/div/div/div/md-card[2]/md-content/md-virtual-repeat-container/div/div[2]/md-list/md-list-item/div"):
+            for course_path in driver.find_elements_by_xpath("/html/body/div[1]/div/div/div/div/md-card[2]/md-content/md-virtual-repeat-container/div/div[2]/md-list/md-list-item/div"):
                 try: #last block is null so must put in try
                     #BeautifulSoup parses better than selenium
                     html = course_path.get_attribute('innerHTML')
@@ -54,7 +54,7 @@ if args.print is None:
                 except:
                     pass
              #have to click a card to scroll correct element of page
-            driver.find_element_by_xpath("/html/body/div[2]/div/div/div/div/md-card[2]").click()
+            driver.find_element_by_xpath("/html/body/div[1]/div/div/div/div/md-card[2]").click()
             actions.perform() #scroll PAGE_DOWN
             time.sleep(1) #have to wait or next cards won't load. havent tested lower settings than 1
 
