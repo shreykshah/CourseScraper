@@ -14,7 +14,7 @@ ap.add_argument('-r', '--read', nargs='?', const='classes.csv',
                 help='file to read course codes from')
 ap.add_argument('-w', '--write', nargs='?', const='classes.csv',
                 help='file to write course codes to')
-ap.add_argument('-o', '--output', default='out.csv', help='output filename')
+ap.add_argument('-o', '--output', nargs='?', const='out.csv', help='output filename')
 ap.add_argument('-p', '--print', nargs='*',
                 help='print course grade pair from file')
 args = ap.parse_args()
@@ -100,7 +100,7 @@ if args.print is None:
                 avg_gpa = tot / n
                 sort_key = (tot) / (n+10) #adjusting for low class numbers
             else:
-                avg_gpa = 0 #cound not find course in MadGrades
+                avg_gpa = 0 #could not find course in MadGrades
                 sort_key = 0
         except: #no previous data or error in data
             avg_gpa = 0
@@ -111,7 +111,7 @@ if args.print is None:
             sort_key = 0
         try:
             print(("getting grades: " + str('%.1f' % (i / len(classes) *100)) +
-               " percent complete"), end='\r')
+               "% complete"), end='\r')
         except:
             pass
         i=i+1
@@ -121,8 +121,9 @@ if args.print is None:
     courses_inorder = {k: v for k, v in sorted(cg.items(), key=lambda item: item[1][1])}
 
     cw = csv.writer(open((args.output),'w'))
+    npad = len(max(courses_inorder, key=len))
     for course in courses_inorder:
-        print(course + ": " + str(cg[course][0]))
+        print(course.ljust(npad) + "  " + str(round(cg[course][0],3)))
         #write output to csv to view later
         cw.writerow([course, cg[course][0], cg[course][1]])
 else:
@@ -136,19 +137,29 @@ else:
             args.print = [str(args.print[0]),1000]
 
     # load course codes
-    try:
+    try: #try/except for if user inputs wrong way ("python scraper.py -p 1000 out.csv")
         with open((args.print[0]), newline='') as f:
             reader = csv.reader(f)
+            plist = [[],[]]
             for rows in reader: #rows is array split by commas
                 if int(rows[0].split(" ")[-1]) <= int(args.print[1]):
-                    print(rows[0] + ": " + rows[1])
+                    plist[0].append(rows[0])
+                    plist[1].append(rows[1])
+            npad = len(max(plist[0], key=len))
+            for i in range(len(plist[0])):
+                print(plist[0][i].ljust(npad) + "  " + str(round(float(plist[1][i]),3)))
     except Exception as e:
         try:
             with open((args.print[1]), newline='') as f:
                 reader = csv.reader(f)
+                plist = [[],[]]
                 for rows in reader:
                     if int(rows[0].split(" ")[-1]) <= int(args.print[0]):
-                        print(rows[0] + ": " + rows[1])
+                        plist[0].append(rows[0])
+                        plist[1].append(rows[1])
+                npad = len(max(plist[0], key=len))
+                for i in range(len(plist[0])):
+                    print(plist[0][i].ljust(npad) + "  " + str(round(float(plist[1][i]),3)))
         except Exception as u:
             print("Please enter file and/or max course code")
             exit()
