@@ -14,7 +14,7 @@ ap.add_argument('-r', '--read', nargs='?', const='classes.csv',
                 help='file to read course codes from')
 ap.add_argument('-w', '--write', nargs='?', const='classes.csv',
                 help='file to write course codes to')
-ap.add_argument('-o', '--output', nargs='?', const='out.csv', help='output filename')
+ap.add_argument('-o', '--output', nargs='?', default='out.csv', help='output filename')
 ap.add_argument('-p', '--print', nargs='*',
                 help='print course grade pair from file')
 args = ap.parse_args()
@@ -34,9 +34,10 @@ if args.print is None:
         course = " "
         actions = ActionChains(driver)
         actions.send_keys(Keys.PAGE_DOWN)
+        ebreak = False
 
         print("getting courses")
-        while prev != course:
+        while True:
             prev = course
             #for each course "block"
             for course_path in driver.find_elements_by_xpath("/html/body/div[1]/div/div/div/div/md-card[2]/md-content/md-virtual-repeat-container/div/div[2]/md-list/md-list-item/div"):
@@ -46,6 +47,9 @@ if args.print is None:
                     soup = BeautifulSoup(html, "lxml") #only works after initialization
                     #find course code (ex. "CS 101")
                     course = soup.find('div', {"class":'result__name flex-80'}).strong.text.strip()
+                    if course == " ":
+                        time.sleep(1)
+                        course = soup.find('div', {"class":'result__name flex-80'}).strong.text.strip()
                     #adding to set - set because repeats may happen as scroll may not scroll 1 view length
                     code = course.replace("&"," ")
                     #not adding empty strings
@@ -57,6 +61,12 @@ if args.print is None:
             driver.find_element_by_xpath("/html/body/div[1]/div/div/div/div/md-card[2]").click()
             actions.perform() #scroll PAGE_DOWN
             time.sleep(1) #have to wait or next cards won't load. havent tested lower settings than 1
+
+            if ebreak and prev == course:
+                break
+            end_check = driver.find_element_by_xpath("/html/body/div[1]/div/div/div/div/md-card[2]/md-toolbar/div/h4").text.strip().split(" ")
+            if end_check[0] == end_check[2]:
+                ebreak = True
 
         driver.quit()
         if args.write is not None:
