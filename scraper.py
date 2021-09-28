@@ -7,6 +7,9 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 r = requests.get('https://pages.cs.wisc.edu/~shrey/cc/ccoursescraperc')
 ap = argparse.ArgumentParser(description='Sort classes by GPA')
@@ -22,7 +25,7 @@ args = ap.parse_args()
 if args.print is None:
     if args.read is None:
         #get classes from Course Search and Enroll Page
-        driver = webdriver.Firefox(executable_path="./geckodriver") #relative path
+        driver = webdriver.Chrome(executable_path=".\\chromedriver.exe") #relative path
         url = "https://enroll.wisc.edu/search"
 
         driver.get(url) #navigate to the page
@@ -35,38 +38,20 @@ if args.print is None:
         actions = ActionChains(driver)
         actions.send_keys(Keys.PAGE_DOWN)
         ebreak = False
-
+        
         print("getting courses")
-        while True:
+        driver.find_element_by_xpath("//*[text()='Search']").click()        
+        right_button = WebDriverWait(driver,10).until(
+            EC.presence_of_element_located((By.XPATH, "//*[text()='keyboard_arrow_right']/ancestor::button")))
+        right_button.click()
+        time.sleep(1)
+        while right_button.get_attribute("disabled") == None:
             prev = course
             #for each course "block"
-            for course_path in driver.find_elements_by_xpath("/html/body/div[1]/div/div/div/div/md-card[2]/md-content/md-virtual-repeat-container/div/div[2]/md-list/md-list-item/div"):
-                try: #last block is null so must put in try
-                    #BeautifulSoup parses better than selenium
-                    html = course_path.get_attribute('innerHTML')
-                    soup = BeautifulSoup(html, "lxml") #only works after initialization
-                    #find course code (ex. "CS 101")
-                    course = soup.find('div', {"class":'result__name flex-80'}).strong.text.strip()
-                    if course == " ":
-                        time.sleep(1)
-                        course = soup.find('div', {"class":'result__name flex-80'}).strong.text.strip()
-                    #adding to set - set because repeats may happen as scroll may not scroll 1 view length
-                    code = course.replace("&"," ")
-                    #not adding empty strings
-                    if code != "":
-                        classes.add(code)
-                except:
-                    pass
-             #have to click a card to scroll correct element of page
-            driver.find_element_by_xpath("/html/body/div[1]/div/div/div/div/md-card[2]").click()
-            actions.perform() #scroll PAGE_DOWN
-            time.sleep(1) #have to wait or next cards won't load. havent tested lower settings than 1
-
-            if ebreak and prev == course:
-                break
-            end_check = driver.find_element_by_xpath("/html/body/div[1]/div/div/div/div/md-card[2]/md-toolbar/div/h4").text.strip().split(" ")
-            if end_check[0] == end_check[2]:
-                ebreak = True
+            for course_path in driver.find_elements_by_css_selector("div.left.grow.catalog"):
+                classes.add(course_path.text)
+            right_button.click()
+            time.sleep(1)
 
         driver.quit()
         if args.write is not None:
